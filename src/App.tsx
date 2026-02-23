@@ -7,8 +7,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Target, Trophy, RotateCcw, Play, Globe } from 'lucide-react';
 import { 
-  Point, Enemy, Missile, Explosion, City, Battery, GameState, Difficulty,
-  GAME_WIDTH, GAME_HEIGHT, WIN_SCORE, EXPLOSION_MAX_RADIUS, 
+  Point, Enemy, Missile, Explosion, City, Battery, GameState, Difficulty, Star,
+  GAME_WIDTH, GAME_HEIGHT, WIN_SCORE, UPGRADE_SCORE_INTERVAL, EXPLOSION_MAX_RADIUS, 
   EXPLOSION_GROWTH_RATE, MISSILE_SPEED, ENEMY_SPEED_MIN, ENEMY_SPEED_MAX 
 } from './types';
 
@@ -76,6 +76,7 @@ export default function App() {
   const explosionsRef = useRef<Explosion[]>([]);
   const citiesRef = useRef<City[]>([]);
   const batteriesRef = useRef<Battery[]>([]);
+  const starsRef = useRef<Star[]>([]);
   const scoreRef = useRef(0);
   const lastSpawnTime = useRef(0);
   const frameId = useRef<number>(0);
@@ -150,6 +151,15 @@ export default function App() {
     enemiesRef.current = [];
     missilesRef.current = [];
     explosionsRef.current = [];
+    
+    // Initialize stars
+    starsRef.current = Array.from({ length: 100 }, () => ({
+      x: Math.random() * GAME_WIDTH,
+      y: Math.random() * GAME_HEIGHT * 0.8, // Mostly in the upper part
+      size: Math.random() * 1.5 + 0.5,
+      opacity: Math.random() * 0.5 + 0.3
+    }));
+
     scoreRef.current = 0;
     setScore(0);
     setLastUpgradeScore(0);
@@ -217,7 +227,7 @@ export default function App() {
   const update = useCallback((time: number) => {
     if (gameState !== 'PLAYING') return;
 
-    if (scoreRef.current - lastUpgradeScore >= 600) {
+    if (scoreRef.current - lastUpgradeScore >= UPGRADE_SCORE_INTERVAL) {
       setGameState('UPGRADING');
       setLastUpgradeScore(scoreRef.current);
       return;
@@ -352,8 +362,21 @@ export default function App() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     // Draw Background
-    ctx.fillStyle = '#0a0a0a';
+    ctx.fillStyle = '#050508'; // Darker blue-black
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Draw Stars
+    starsRef.current.forEach(star => {
+      ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Twinkle effect
+      if (Math.random() > 0.98) {
+        star.opacity = Math.random() * 0.5 + 0.3;
+      }
+    });
 
     // Draw Ground
     ctx.fillStyle = '#222';
@@ -416,9 +439,28 @@ export default function App() {
       ctx.lineTo(enemy.current.x, enemy.current.y);
       ctx.stroke();
 
+      // UFO Shape
+      const x = enemy.current.x;
+      const y = enemy.current.y;
+      
+      // Bottom part (saucer)
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
-      ctx.arc(enemy.current.x, enemy.current.y, 2, 0, Math.PI * 2);
+      ctx.ellipse(x, y, 8, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Top part (dome)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 4, Math.PI, 0);
+      ctx.fill();
+      
+      // Lights
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x - 4, y, 1, 0, Math.PI * 2);
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.arc(x + 4, y, 1, 0, Math.PI * 2);
       ctx.fill();
     });
 
